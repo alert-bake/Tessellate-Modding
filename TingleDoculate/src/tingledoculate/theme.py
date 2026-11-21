@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from html import escape
+from pathlib import PurePosixPath
+import posixpath
 
 
-CSS = """:root{color-scheme:light dark;--bg:#fff;--panel:#f5f6f8;--text:#20242b;--muted:#687180;--line:#e1e4e8;--link:#315fc4;--code:#f0f2f5}
+CSS = """\
+:root{color-scheme:light dark;--bg:#fff;--panel:#f5f6f8;--text:#20242b;--muted:#687180;--line:#e1e4e8;--link:#315fc4;--code:#f0f2f5}
 @media(prefers-color-scheme:dark){:root{--bg:#111318;--panel:#191d24;--text:#e7eaf0;--muted:#a1a9b7;--line:#303642;--link:#91b4ff;--code:#202630}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}.layout{min-height:100vh;display:grid;grid-template-columns:270px minmax(0,1fr)}
@@ -16,12 +19,13 @@ main{width:min(900px,100%);padding:54px clamp(22px,6vw,76px);margin:0 auto}main 
 @media(max-width:760px){.layout{display:block}.sidebar{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:16px}.nav{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0 0}.nav li{margin:0}.nav .depth-1,.nav .depth-2,.nav .depth-3{padding-left:0}main{padding:30px 20px}main h1{font-size:1.8rem}}
 """
 
-JS = """(() => {
+JS = """\
+(() => {
   const input = document.querySelector('[data-search]');
   const results = document.querySelector('[data-search-results]');
   if (!input || !results) return;
   let indexPromise;
-  const loadIndex = () => indexPromise ||= fetch('./search-index.json').then(r => {
+  const loadIndex = () => indexPromise ||= fetch(input.dataset.index).then(r => {
     if (!r.ok) throw new Error('Search index unavailable');
     return r.json();
   });
@@ -35,7 +39,7 @@ JS = """(() => {
       for (const page of matches) {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = page.url;
+        a.href = new URL(page.url, input.dataset.root).href;
         a.textContent = page.title;
         li.append(a);
         results.append(li);
@@ -48,12 +52,21 @@ JS = """(() => {
 """
 
 
-def render_page(title: str, site_title: str, description: str, body: str, navigation: list[dict[str, str]]) -> str:
+def render_page(
+    title: str,
+    site_title: str,
+    description: str,
+    body: str,
+    navigation: list[dict[str, str]],
+    output_path: PurePosixPath,
+) -> str:
+    root_prefix = "../" * len(output_path.parent.parts) if output_path.parent.as_posix() != "." else "./"
     nav_items = []
     for item in navigation:
         depth = min(int(item["depth"]), 3)
+        href = posixpath.relpath(item["url"], start=output_path.parent.as_posix())
         nav_items.append(
-            f'<li class="depth-{depth}"><a href="{escape(item["url"], quote=True)}">{escape(item["title"])}</a></li>'
+            f'<li class="depth-{depth}"><a href="{escape(href, quote=True)}">{escape(item["title"])}</a></li>'
         )
     nav = "\n".join(nav_items)
     return f\'''<!doctype html>
@@ -63,20 +76,20 @@ def render_page(title: str, site_title: str, description: str, body: str, naviga
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{escape(description, quote=True)}">
   <title>{escape(title)} · {escape(site_title)}</title>
-  <link rel="stylesheet" href="/assets/tingledoculate.css">
+  <link rel="stylesheet" href="{root_prefix}assets/tingledoculate.css">
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <a class="brand" href="/index.html">{escape(site_title)}</a>
+      <a class="brand" href="{root_prefix}index.html">{escape(site_title)}</a>
       <p class="description">{escape(description)}</p>
-      <input class="search" data-search type="search" placeholder="Search documentation…" aria-label="Search documentation">
+      <input class="search" data-search data-root="{root_prefix}" data-index="{root_prefix}search-index.json" type="search" placeholder="Search documentation…" aria-label="Search documentation">
       <ul class="search-results" data-search-results aria-live="polite"></ul>
       <ul class="nav">{nav}</ul>
     </aside>
     <main><article>{body}</article></main>
   </div>
-  <script src="/assets/tingledoculate.js" defer></script>
+  <script src="{root_prefix}assets/tingledoculate.js" defer></script>
 </body>
 </html>
 \'''
