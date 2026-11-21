@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import re
 from pathlib import PurePosixPath
 
@@ -21,10 +22,7 @@ def rewrite_markdown_links(rendered_html: str) -> str:
     def replace(match: re.Match[str]) -> str:
         url = match.group("url")
         suffix = match.group("suffix")
-        path = PurePosixPath(url)
-        target = path.with_suffix(".html").as_posix()
-        if target.endswith("/index.html") and target.startswith("./"):
-            target = target[2:]
+        target = PurePosixPath(url).with_suffix(".html").as_posix()
         return f'{match.group("prefix")}{target}{suffix}'
 
     return _MARKDOWN_LINK.sub(replace, rendered_html)
@@ -32,9 +30,7 @@ def rewrite_markdown_links(rendered_html: str) -> str:
 
 def plain_text(rendered_html: str) -> str:
     """Extract compact searchable text from rendered HTML."""
-    text = _TAGS.sub(" ", rendered_html)
-    text = re.sub(r"&(?:amp|lt|gt|quot|#39);", " ", text)
-    return _WHITESPACE.sub(" ", text).strip()
+    return _WHITESPACE.sub(" ", html.unescape(_TAGS.sub(" ", rendered_html))).strip()
 
 
 def page_title(markdown: str, fallback: str) -> str:
