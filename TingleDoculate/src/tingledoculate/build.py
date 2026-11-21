@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import shutil
 import tomllib
 from pathlib import Path, PurePosixPath
@@ -11,7 +10,7 @@ from .parser import make_markdown_parser, page_title, plain_text, rewrite_markdo
 from .theme import CSS, JS, render_page
 
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 
 def _digest(value: bytes) -> str:
@@ -21,7 +20,8 @@ def _digest(value: bytes) -> str:
 def _output_path(relative: Path) -> Path:
     posix = PurePosixPath(relative.as_posix())
     if posix.name.lower() == "index.md":
-        return Path(*posix.parts[:-1], "index.html")
+        parent = Path(*posix.parts[:-1]) if len(posix.parts) > 1 else Path(".")
+        return parent / "index.html"
     return Path(*posix.with_suffix(".html").parts)
 
 
@@ -32,11 +32,11 @@ def _load_config(config_path: Path) -> dict:
         return tomllib.load(handle)
 
 
-def _navigation(pages: list[tuple[Path, Path, str, str]]) -> list[dict[str, str]]:
+def _navigation(pages: list[tuple[Path, Path, str]]) -> list[dict[str, str]]:
     items = []
-    for source, output, title, _ in pages:
+    for source, output, title in pages:
         depth = max(0, len(source.parts) - 1)
-        items.append({"title": title, "url": "/" + output.as_posix(), "depth": str(depth)})
+        items.append({"title": title, "url": output.as_posix(), "depth": str(depth)})
     return items
 
 
@@ -54,20 +54,6 @@ def build(root: Path, config_path: Path | None = None, force: bool = False) -> d
     if not source_dir.is_dir():
         raise FileNotFoundError(f"Documentation source directory does not exist: {source_dir}")
 
-    source_files = sorted(p for p in source_dir.rglob("*.md") if not any(part.startswith(".") for part in p.relative_to(source_dir).parts))
-    parser = make_markdown_parser()
-    pages: list[tuple[Path, Path, str, str]] = []
-    for source in source_files:
-        relative = source.relative_to(source_dir)
-        markdown = source.read_text(encoding="utf-8")
-        title = page_title(markdown, source.stem)
-        html = rewrite_markdown_links(parser.render(markdown))
-        pages.append((relative, _output_path(relative), title, html))
-
-    nav = _navigation(pages)
-    global_fingerprint = _digest(
-        (json.dumps({"site": site_config, "nav": nav}, sort_keys=True) + CSS + JS).encode("utf-8")
-    )
     old_cache = {}
     if build_config.get("incremental", True) and cache_path.exists() and not force:
         try:
@@ -77,6 +63,29 @@ def build(root: Path, config_path: Path | None = None, force: bool = False) -> d
         except (OSError, json.JSONDecodeError):
             old_cache = {}
 
+    source_files = sorted(
+        p for p in source_dir.rglob("*.md")
+        if not any(part.startswith(".") for part in p.relative_to(source_dir).parts)
+    )
+    old_pages = old_cache.get("pages", {})
+    source_records = []
+    for source in source_files:
+        relative = source.relative_to(source_dir)
+        key = relative.as_posix()
+        source_hash = _digest(source.read_bytes())
+        old_record = old_pages.get(key, {})
+        if old_record.get("source_hash") == source_hash and old_record.get("title"):
+            title = old_record["title"]
+        else:
+            from .parser import page_title
+            title = page_title(source.read_text(encoding="utf-8"), source.stem)
+        source_records.append((source, relative, _output_path(relative), source_hash, title))
+
+    nav = _navigation([(relative, output, title) for _, relative, output, _, title in source_records])
+    global_fingerprint = _digest(
+        (json.dumps({"site": site_config, "nav": nav}, sort_keys=True) + CSS + JS).encode("utf-8")
+    )
+
     output_dir.mkdir(parents=True, exist_ok=True)
     assets_dir = output_dir / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
@@ -85,36 +94,56 @@ def build(root: Path, config_path: Path | None = None, force: bool = False) -> d
 
     site_title = str(site_config.get("title", "Documentation"))
     description = str(site_config.get("description", ""))
-    new_cache: dict[str, str] = {}
+    parser = make_markdown_parser()
+    new_pages = {}
     search_pages = []
     rendered = skipped = 0
 
-    for relative, output_relative, title, body in pages:
-        source = source_dir / relative
+    for source, relative, output_relative, source_hash, title in source_records:
         key = relative.as_posix()
-        source_hash = _digest(source.read_bytes())
-        page_fingerprint = _digest((source_hash + global_fingerprint).encode("utf-8"))
         destination = output_dir / output_relative
-        new_cache[key] = page_fingerprint
+        page_fingerprint = _digest((source_hash + global_fingerprint).encode("utf-8"))
+        old_record = old_pages.get(key, {})
         if (
             build_config.get("incremental", True)
             and not force
-            and old_cache.get("pages", {}).get(key) == page_fingerprint
+            and old_record.get("fingerprint") == page_fingerprint
             and destination.exists()
+            and old_record.get("search")
         ):
+            search_record = old_record["search"]
             skipped += 1
         else:
+            markdown = source.read_text(encoding="utf-8")
+            body = rewrite_markdown_links(parser.render(markdown))
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(
-                render_page(title, site_title, description, body, nav),
+                render_page(title, site_title, description, body, nav, PurePosixPath(output_relative.as_posix())),
                 encoding="utf-8",
             )
+            search_record = {
+                "title": title,
+                "url": output_relative.as_posix(),
+                "text": plain_text(body),
+            }
             rendered += 1
-        search_pages.append({
+        search_pages.append(search_record)
+        new_pages[key] = {
+            "source_hash": source_hash,
+            "fingerprint": page_fingerprint,
             "title": title,
-            "url": "/" + output_relative.as_posix(),
-            "text": plain_text(body),
-        })
+            "search": search_record,
+        }
+
+    # Remove generated pages whose Markdown sources were deleted.
+    for stale_key in old_pages.keys() - new_pages.keys():
+        stale_record = old_pages[stale_key]
+        stale_title = stale_record.get("title", "")
+        # The old source path determines the generated page path.
+        stale_output = _output_path(Path(stale_key))
+        stale_file = output_dir / stale_output
+        if stale_file.is_file():
+            stale_file.unlink()
 
     # Copy user-provided static assets without putting them through the Markdown pipeline.
     user_assets = source_dir / "assets"
@@ -132,7 +161,7 @@ def build(root: Path, config_path: Path | None = None, force: bool = False) -> d
     )
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(
-        json.dumps({"version": CACHE_VERSION, "pages": new_cache}, separators=(",", ":")),
+        json.dumps({"version": CACHE_VERSION, "pages": new_pages}, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
-    return {"pages": len(pages), "rendered": rendered, "skipped": skipped}
+    return {"pages": len(source_records), "rendered": rendered, "skipped": skipped}
