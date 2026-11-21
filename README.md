@@ -1,20 +1,23 @@
 # Tessellate-Modding
 
-Modding documentation for Tessellate, and the source repository for **TingleDoculate**, a small static documentation generator inspired by MkDocs.
+The source repository for Tessellate's modding documentation.
 
-## Repository layout
+The wiki currently covers the modding systems that exist today: **LuaJ** and **custom commands**. Future systems will be documented when they exist and their behavior is confirmed.
 
-- `docs/` — Markdown source for the modding wiki.
-- `TingleDoculate/` — TingleDoculate's source code and implementation notes.
-- `tingledoculate.toml` — build configuration.
-- `site/` — generated website output (not committed).
+## Documentation
+
+- `docs/` contains the Markdown source for the wiki.
+- `tingledoculate.toml` configures the documentation site.
+- `site/` is generated output and is not committed.
 
 ## Build the documentation
 
 Requires Python 3.11 or newer.
 
+Install [TingleDoculate](https://github.com/alert-bake/TingleDoculate), the standalone static-site generator:
+
 ```sh
-python -m pip install -e .
+python -m pip install "git+https://github.com/alert-bake/TingleDoculate.git"
 tingledoculate build
 ```
 
@@ -24,4 +27,7 @@ Preview locally:
 tingledoculate serve
 ```
 
-See [TingleDoculate/README.md](TingleDoculate/README.md) for the generator's current scope and usage.
+TingleDoculate's source code, tests, usage guide, and issue tracker live in its [own repository](https://github.com/alert-bake/TingleDoculate).
+
+The published modding wiki is available at:
+https://alert-bake.github.io/Tessellate-Modding/
