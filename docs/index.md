@@ -11,3 +11,9 @@ The modding ecosystem is early in development. Pages should distinguish implemen
 ## Contributing documentation
 
 Add Markdown files under `docs/`. Directories become navigation groups, and Markdown files become pages. Run `tingledoculate build` from the repository root to generate the static site.
+
+
+### Little Disclaimer
+
+I AM A BUM.
+**ChatGPT** IS helping me write the docs since I am Not reading 70kb of kotlin when a lot of new modding content is added.
