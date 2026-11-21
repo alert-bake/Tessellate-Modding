@@ -69,7 +69,7 @@ def render_page(
             f'<li class="depth-{depth}"><a href="{escape(href, quote=True)}">{escape(item["title"])}</a></li>'
         )
     nav = "\n".join(nav_items)
-    return f\'''<!doctype html>
+    return f'''<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -92,4 +92,4 @@ def render_page(
   <script src="{root_prefix}assets/tingledoculate.js" defer></script>
 </body>
 </html>
-\'''
+'''
