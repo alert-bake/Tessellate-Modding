@@ -137,8 +137,6 @@ def build(root: Path, config_path: Path | None = None, force: bool = False) -> d
 
     # Remove generated pages whose Markdown sources were deleted.
     for stale_key in old_pages.keys() - new_pages.keys():
-        stale_record = old_pages[stale_key]
-        stale_title = stale_record.get("title", "")
         # The old source path determines the generated page path.
         stale_output = _output_path(Path(stale_key))
         stale_file = output_dir / stale_output
@@ -152,7 +150,7 @@ def build(root: Path, config_path: Path | None = None, force: bool = False) -> d
             if asset.is_file():
                 target = output_dir / "assets" / asset.relative_to(user_assets)
                 target.parent.mkdir(parents=True, exist_ok=True)
-                if not target.exists() or asset.stat().st_mtime_ns > target.stat().st_mtime_ns:
+                if not target.exists() or asset.read_bytes() != target.read_bytes():
                     shutil.copy2(asset, target)
 
     (output_dir / "search-index.json").write_text(
