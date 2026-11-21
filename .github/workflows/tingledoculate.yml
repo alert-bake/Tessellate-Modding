@@ -1,4 +1,4 @@
-name: TingleDoculate
+name: Build Tessellate Modding Docs
 
 on:
   push:
@@ -10,18 +10,15 @@ permissions:
   contents: read
 
 jobs:
-  test-and-build:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-      - name: Install
-        run: python -m pip install -e .
-      - name: Test
-        run: python -m unittest discover -s tests -v
+      - name: Install TingleDoculate
+        run: python -m pip install "git+https://github.com/alert-bake/TingleDoculate.git"
       - name: Build documentation
         run: tingledoculate build
       - name: Upload Pages artifact
@@ -32,7 +29,7 @@ jobs:
 
   deploy:
     if: github.event_name != 'pull_request'
-    needs: test-and-build
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       pages: write
