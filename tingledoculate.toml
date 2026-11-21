@@ -1,0 +1,9 @@
+[site]
+title = "Tessellate Modding"
+description = "Documentation for modding Tessellate."
+source = "docs"
+output = "site"
+
+[build]
+# Incremental builds are enabled by default.
+incremental = true
