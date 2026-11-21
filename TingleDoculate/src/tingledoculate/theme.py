@@ -39,7 +39,7 @@ JS = """\
       for (const page of matches) {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = new URL(page.url, input.dataset.root).href;
+        a.href = new URL(page.url, new URL(input.dataset.root, document.baseURI)).href;
         a.textContent = page.title;
         li.append(a);
         results.append(li);
