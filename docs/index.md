@@ -1,6 +1,6 @@
 # Tessellate Modding Documentation
 
-Welcome to the Tessellate modding documentation.
+<color="00FF00">Welcome to the Tessellate modding documentation.</color>
 
 This documentation covers the modding surface currently implemented in Tessellate:
 
