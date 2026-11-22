@@ -2,11 +2,16 @@
 
 Welcome to the Tessellate modding documentation.
 
-This documentation is intentionally scoped to the modding surface that exists today. At this stage, that includes the LuaJ runtime and custom commands. Future systems will be documented when they exist and their behavior is confirmed.
+This documentation covers the modding surface currently implemented in Tessellate:
+
+- [LuaJ Modding API](lua-j/index.md): mod layout, sandbox, Lua globals, settings, engine APIs, and permissions.
+- [TESSELLATE Custom Command API](custom-commands/index.md): JSON command definitions and the Kotlin command extension interface.
+
+The documentation is intentionally implementation-led. It distinguishes APIs that mod authors can use today from application-side extension points and features that do not exist yet.
 
 ## Documentation status
 
-The modding ecosystem is early in development. Pages should distinguish implemented behavior from proposals and future plans.
+The API is under active development. The reference pages link to the Tessellate source revision they were checked against. If the implementation changes, update the docs from source rather than assuming old examples still work.
 
 ## Contributing documentation
 
