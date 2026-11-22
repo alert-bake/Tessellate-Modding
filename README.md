@@ -4,6 +4,14 @@ The source repository for Tessellate's modding documentation.
 
 The wiki currently covers the modding systems that exist today: **LuaJ** and **custom commands**. Future systems will be documented when they exist and their behavior is confirmed.
 
+## Aizo
+
+Tessellate's documentation can use TingleDoculate's HTMD color tags:
+
+```md
+<color="FF00FF">Aizo</color>
+```
+
 ## Documentation
 
 - `docs/` contains the Markdown source for the wiki.
