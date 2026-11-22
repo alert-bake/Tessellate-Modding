@@ -6,11 +6,7 @@ The wiki currently covers the modding systems that exist today: **LuaJ** and **c
 
 ## Aizo
 
-Tessellate's documentation can use TingleDoculate's HTMD color tags:
-
-```md
-<color="FF00FF">Aizo</color>
-```
+Tessellate's documentation can use TingleDoculate's HTMD color tags: <color="FF00FF">Aizo</color>.
 
 ## Documentation
 
